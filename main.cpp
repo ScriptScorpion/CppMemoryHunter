@@ -13,7 +13,7 @@ int main(int argc, char* argv[]) {
     printLogo();
     std::cout << "Enter Path to File: ";
     std::string path_str;
-    std::getline(std::cin, path_str); // Читаем весь ввод (пробелы в путях учтёт)
+    std::getline(std::cin, path_str); // Читаем весь ввод (пробелы в путях учтитываем)
 
     fs::path input_path(path_str); // Преобразуем в filesystem::path
 
@@ -25,13 +25,12 @@ int main(int argc, char* argv[]) {
 
     // Если это файл — анализируем его
     if (fs::is_regular_file(input_path)) {
-        analyzeFile(input_path.string()); // Передаём как строку
+        analyzeFile(input_path.string()); // giving string
     }
     // Если это папка — анализируем все .cpp файлы внутри
     else if (fs::is_directory(input_path)) {
         for (const auto& entry : fs::directory_iterator(input_path)) {
             if (entry.path().extension() == ".cpp") {
-                std::cout << "" << entry.path() << "\n";
                 analyzeFile(entry.path().string());
             }
         }
