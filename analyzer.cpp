@@ -15,7 +15,7 @@ void analyzeFile(const std::string &file_path) {
      bool hasMemoryLeakIssues = false; 
      std::ifstream file(file_path);
      if (!file.is_open()) {
-          std::cerr << "[!] Error: Could not open file " << file_path << std::endl;
+          std::cerr << "\033[1;31m[!]\033[0m Error: Could not open file " << file_path << std::endl;
           return;
      }
 

@@ -19,7 +19,7 @@ int main(int argc, char* argv[]) {
 
     // Проверка существования пути
     if (!fs::exists(input_path)) {
-        std::cout << "Error:File dont exist!\n";
+        std::cout << "\033[1;31m[!]\033[0m Error: File dont exist!\n";
         return 1;
     }
 
