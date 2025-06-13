@@ -3,19 +3,19 @@
 #include "analyzer.cpp"
 namespace fs = std::filesystem;
 void printLogo() {
-    std::cout << R"(
-   C p p  M E M O R Y 
-   H U N T E R  1.0  
-    )" << std::endl;
+    std::cout << "\033[1;32m" << R"(
+   C + +  M E M O R Y 
+   H U N T E R  1.1  
+    )" << "\033[0m" << std::endl;
 }
 
 int main(int argc, char* argv[]) {
     printLogo();
-    std::cout << "Enter Path to File: ";
+    std::cout << "Enter Path to File/Directory: ";
     std::string path_str;
-    std::getline(std::cin, path_str); // Читаем весь ввод (пробелы в путях учтитываем)
+    std::getline(std::cin, path_str); // reading input
 
-    fs::path input_path(path_str); // Преобразуем в filesystem::path
+    fs::path input_path(path_str); // converting filesystem::path
 
     // Проверка существования пути
     if (!fs::exists(input_path)) {
@@ -23,17 +23,22 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Если это файл — анализируем его
+    // if file analyze him
     if (fs::is_regular_file(input_path)) {
-        analyzeFile(input_path.string()); // giving string
+        std::cout << "[info] Checking file: " << input_path.string() << std::endl;
+        analyzeFile(input_path.string());
     }
-    // Если это папка — анализируем все .cpp файлы внутри
+    // if folder analyze all .cpp files
     else if (fs::is_directory(input_path)) {
-        for (const auto& entry : fs::directory_iterator(input_path)) {
-            if (entry.path().extension() == ".cpp") {
-                analyzeFile(entry.path().string());
-            }
+    std::cout << "[info] directory: " << input_path << std::endl;
+    
+    for (const auto& entry : fs::directory_iterator(input_path)) {
+        if (entry.path().extension() == ".cpp") {
+            std::cout << "  Scanning file: " << entry.path().filename() << std::endl;
+            analyzeFile(entry.path().string()); 
         }
     }
+    
+}
 
 }
