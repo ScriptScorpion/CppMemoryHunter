@@ -10,12 +10,11 @@
 #include "report.cpp"
 #include <filesystem>
 
-void analyzeFile(const std::string &file_path) {
+void analyzeCPPFile(const std::string &file_path) {
 
-     bool hasMemoryLeakIssues = false; 
      std::ifstream file(file_path);
      if (!file.is_open()) {
-          std::cerr << "\033[1;31m[!]\033[0m Error: Could not open file " << file_path << std::endl;
+          std::cout << "\033[1;31m[!]\033[0m Error: Could not open file " << file_path << std::endl;
           return;
      }
 
@@ -46,7 +45,7 @@ void analyzeFile(const std::string &file_path) {
 
         // 1. check for new/delete
           bool hasNew = trimmedLine.find("new ") != std::string::npos || 
-               trimmedLine.find("new[") != std::string::npos;
+               trimmedLine.find("new[]") != std::string::npos;
           bool hasDelete = trimmedLine.find("delete ") != std::string::npos || 
                trimmedLine.find("delete[]") != std::string::npos;
 
@@ -57,96 +56,82 @@ void analyzeFile(const std::string &file_path) {
           // 2. check just for pointers
           size_t ptrPos = trimmedLine.find('*');
           if (ptrPos != std::string::npos) {
-            // cheking if real pointers
                bool isPointerDeclaration = true;
-        
-            // cheking connected words
-               if (ptrPos > 0 && (trimmedLine[ptrPos-1] == '/' || trimmedLine[ptrPos-1] == ' ')) {
-                    isPointerDeclaration = false;
+            
+               if (ptrPos > 0 && (trimmedLine[ptrPos-1] == '/' || 
+                         trimmedLine[ptrPos-1] == ' ' || 
+                         trimmedLine[ptrPos-1] == '+' || 
+                         trimmedLine[ptrPos-1] == '-' ||
+                         trimmedLine[ptrPos-1] == '=')) {
+               isPointerDeclaration = false;
                }
 
                if (isPointerDeclaration) {
-                // cheking if memory setted for pointer
-                    bool hasAllocation = trimmedLine.find('=', ptrPos) != std::string::npos && 
-                         (trimmedLine.find("new", ptrPos) != std::string::npos ||
-                         trimmedLine.find("malloc", ptrPos) != std::string::npos);
+                    bool hasAllocation = (trimmedLine.find('=', ptrPos) != std::string::npos) && 
+                         (trimmedLine.find("new", ptrPos) != std::string::npos);
                if (!hasAllocation) {
-                         issue(filename, lineNumber);
-                    
+                    issue(filename, lineNumber);
                }
-               }
-          }
-     }
+            }
+        }
+    }
 }
 
+void analyzeCFile(const std::string &file_path) {
+    std::ifstream file(file_path);
+    if (!file.is_open()) {
+        std::cerr << "\033[1;31m[!]\033[0m Error: Could not open file " << file_path << std::endl;
+        return;
+    }
 
+    std::string filename = file_path.substr(file_path.find_last_of("/\\") + 1);
+    std::string line;
+    int lineNumber = 0;
+    bool inCommentBlock = false;
 
-// void analyzeFile(const std::string &file_path) {
-//      std::ifstream file(file_path);
-//      if (!file.is_open()) {
-//         std::cerr << "[!] Error: Could not open file " << file_path << std::endl;
-//         return;
-//      }
+    while (std::getline(file, line)) {
+        lineNumber++;
+        std::string trimmedLine = line;
 
-//     // Извлекаем имя файла из пути (для вывода в issue())
-//      std::string filename = file_path.substr(file_path.find_last_of("/\\") + 1);
+        // comments
+        if (trimmedLine.find("/*") != std::string::npos) inCommentBlock = true;
+        if (trimmedLine.find("*/") != std::string::npos) {
+            inCommentBlock = false;
+            continue;
+        }
+        if (inCommentBlock) continue;
 
-//      std::string line;
-//      int lineNumber = 0;
-//      bool inCommentBlock = false;
+        // 1. Check for malloc/free
+        bool hasMalloc = (trimmedLine.find("malloc(") != std::string::npos) ||
+                        (trimmedLine.find("calloc(") != std::string::npos);
+        bool hasFree = (trimmedLine.find("free(") != std::string::npos);
 
-//      while (std::getline(file, line)) {
-//           lineNumber++;
-//           std::string trimmedLine = line;
+        if (hasMalloc && !hasFree) {
+            issue(filename, lineNumber);
+        }
 
-//         // Удаляем однострочные комментарии
-//           size_t commentPos = trimmedLine.find("//");
-//           if (commentPos != std::string::npos) {
-//                trimmedLine = trimmedLine.substr(0, commentPos);
-//           }
-
-//         // Проверяем начало/конец блочного комментария
-//           if (trimmedLine.find("/*") != std::string::npos) inCommentBlock = true;
-//           if (trimmedLine.find("*/") != std::string::npos) {
-//                inCommentBlock = false;
-//                continue;
-//           }
-//           if (inCommentBlock) continue;
-
-//         // 1. Проверка на несбалансированные new/delete
-//           bool hasNew = trimmedLine.find("new ") != std::string::npos || 
-//                trimmedLine.find("new[") != std::string::npos;
-//           bool hasDelete = trimmedLine.find("delete ") != std::string::npos || 
-//                trimmedLine.find("delete[]") != std::string::npos;
-
-//           if (hasNew && !hasDelete) {
-//             issue(filename, lineNumber);
-//           }
-
-//          // 2. Проверка на "голые" указатели, которые могут привести к утечкам
-//           size_t ptrPos = trimmedLine.find('*');
-//           if (ptrPos != std::string::npos) {
-//             // Проверяем, что это объявление указателя (не умножение и не комментарий)
-//                bool isPointerDeclaration = true;
+        // 2. Cheack just for pointers
+        size_t ptrPos = trimmedLine.find('*');
+        if (ptrPos != std::string::npos) {
+            bool isPointerDeclaration = true;
             
-//             // Проверяем соседние символы
-            
-//                if (ptrPos > 0 && (trimmedLine[ptrPos-1] == '/' || trimmedLine[ptrPos-1] == ' ')) {
-//                     isPointerDeclaration = false;
-//                }
+            if (ptrPos > 0 && (trimmedLine[ptrPos-1] == '/' || 
+                              trimmedLine[ptrPos-1] == ' ' || 
+                              trimmedLine[ptrPos-1] == '+' || 
+                              trimmedLine[ptrPos-1] == '-' ||
+                              trimmedLine[ptrPos-1] == '=')) {
+                isPointerDeclaration = false;
+            }
 
-//           if (isPointerDeclaration) {
-//                 // Проверяем, есть ли выделение памяти для этого указателя
-//                     bool hasAllocation = trimmedLine.find('=', ptrPos) != std::string::npos && 
-//                          (trimmedLine.find("new", ptrPos) != std::string::npos ||
-//                          trimmedLine.find("malloc", ptrPos) != std::string::npos);
-//                if (!hasAllocation) {
-//                     issue(filename, lineNumber);
-//                }
-//           }
-//           }
-//      }
-// }
-
+            if (isPointerDeclaration) {
+                bool hasAllocation = (trimmedLine.find('=', ptrPos) != std::string::npos) && 
+                                    (trimmedLine.find("malloc", ptrPos) != std::string::npos);
+                if (!hasAllocation) {
+                    issue(filename, lineNumber);
+                }
+            }
+        }
+    }
+}
 
 #endif
